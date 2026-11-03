@@ -13,6 +13,7 @@
 - **单击拉出工资条**：从悬浮窗底部的出纸口「打印」出来，列着本月已赚、今日满勤、时薪、今日进度、发薪日倒数、带薪摸鱼金额，外加一句会算账的提示，比如「再工作 2 小时 53 分，就能赚到一件 T 恤（¥99）」。
 - **菜单栏金币**：菜单栏上实时显示今日已赚、本月已赚或下班倒计时，可以选。
 - **带薪摸鱼计时**、**锁定后鼠标穿透**、**三档大小**、**不透明度**、**开机自启**、**8-bit 金币音**（默认关）。
+- **中英文界面**：在「设置 › 显示 › 语言」中选择「简体中文」或「English」，保存后菜单、悬浮窗、工资条和提示一起切换。
 - 总在最前，所有桌面和全屏应用上都看得到；点它不会抢走你当前应用的焦点。不联网，数据只存在本机。
 
 | 拉出工资条 | 午休 | 下班那一刻 |
@@ -61,10 +62,11 @@
 只依赖 Xcode 自带的 `swiftc`，没有第三方库。
 
 ```bash
-./macos/build.sh test   # 跑计算核心测试（13 组）
+./macos/build.sh test   # 跑计算核心测试（14 组）
 ./macos/build.sh        # 编译当前架构 → build/上班激励器.app
 ./macos/build.sh run    # 编译并启动
 ./macos/build.sh dmg    # 测试 + 通用版（Apple 芯片 + Intel）+ build/上班激励器.dmg
+./macos/screenshots.sh  # 重新生成英文 README 截图
 ```
 
 签名默认 ad-hoc。仓库根目录放一个 `.codesign-identity`（已加进 .gitignore），写上证书名或 SHA-1，就改用该证书签名。
@@ -75,6 +77,7 @@
 macos/
   Sources/
     PayCore.swift           计算核心（纯 Foundation，Windows 版照着移植）
+    Localization.swift      语言偏好与中英文文案选择
     PixelKit.swift          调色板、像素位图、缺角边框、像素字体、粗体数字字形
     Odometer.swift          机械里程表式滚轮金额
     Diorama.swift           24×24 像素小办公室（天色、打工人、存钱罐）

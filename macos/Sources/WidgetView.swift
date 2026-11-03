@@ -38,21 +38,25 @@ struct WidgetState {
     private func money(_ v: Double, _ dec: Int = 2) -> String { PayCore.formatMoney(v, settings, decimals: dec) }
 
     var chip: (text: String, color: UInt32) {
-        guard let snap else { return ("待设置", Pal.red) }
-        if fishing && snap.status == .working { return ("摸鱼中", Pal.cyan) }
-        return (PayCore.statusText[snap.status]!, Pal.status(snap.status))
+        guard let snap else { return (L10n.t(settings.language, "待设置", "Set up"), Pal.red) }
+        if fishing && snap.status == .working { return (L10n.t(settings.language, "摸鱼中", "Slacking"), Pal.cyan) }
+        return (PayCore.statusText(snap.status, settings.language), Pal.status(snap.status))
     }
 
     /// 状态行右侧：(灰色说明, 亮色数值)
     var right: (label: String, value: String) {
-        guard let snap else { return ("", "右键 › 设置") }
+        let lang = settings.language
+        guard let snap else { return ("", L10n.t(lang, "右键 › 设置", "Right-click › Settings")) }
         switch snap.status {
-        case .working: return ("距下班 ", PayCore.formatClock(snap.countdown))
-        case .lunch: return ("距开工 ", PayCore.formatClock(snap.countdown))
-        case .before: return ("距上班 ", PayCore.formatClock(snap.countdown))
-        case .after: return snap.nextStart.map { ("", $0.label + " 上班") } ?? ("", "收工")
-        case .off: return ("", "本月已赚")
-        case .setup: return ("", "右键 › 设置")
+        case .working: return (L10n.t(lang, "距下班 ", "Off in "), PayCore.formatClock(snap.countdown))
+        case .lunch: return (L10n.t(lang, "距开工 ", "Back in "), PayCore.formatClock(snap.countdown))
+        case .before: return (L10n.t(lang, "距上班 ", "Start in "), PayCore.formatClock(snap.countdown))
+        case .after:
+            return snap.nextStart.map {
+                lang == .en ? ("", $0.label) : ("", $0.label + " 上班")
+            } ?? ("", L10n.t(lang, "收工", "Done"))
+        case .off: return ("", L10n.t(lang, "本月已赚", "This month"))
+        case .setup: return ("", L10n.t(lang, "右键 › 设置", "Right-click › Settings"))
         }
     }
 
@@ -93,20 +97,21 @@ struct WidgetState {
     }
 
     var receiptRows: [(String, String)] {
-        guard let snap else { return [("先设置工资", "")] }
+        let lang = settings.language
+        guard let snap else { return [(L10n.t(lang, "先设置工资", "Set salary first"), "")] }
         let payday: String
         switch snap.paydayDays {
-        case nil: payday = "未设置"
-        case 0?: payday = "就是今天"
-        case let d?: payday = "还有 \(d) 天"
+        case nil: payday = L10n.t(lang, "未设置", "Not set")
+        case 0?: payday = L10n.t(lang, "就是今天", "Today")
+        case let d?: payday = L10n.t(lang, "还有 \(d) 天", d == 1 ? "In 1 day" : "In \(d) days")
         }
         return [
-            ("本月已赚", money(snap.monthEarned)),
-            ("今日满勤", money(snap.dailyPay)),
-            ("时薪", money(snap.hourly)),
-            ("今日进度", String(format: "%.1f%%", snap.progress * 100)),
-            ("发薪日", payday),
-            ("带薪摸鱼", money(fishEarned)),
+            (L10n.t(lang, "本月已赚", "This month"), money(snap.monthEarned)),
+            (L10n.t(lang, "今日满勤", "Full day"), money(snap.dailyPay)),
+            (L10n.t(lang, "时薪", "Hourly"), money(snap.hourly)),
+            (L10n.t(lang, "今日进度", "Progress"), String(format: "%.1f%%", snap.progress * 100)),
+            (L10n.t(lang, "发薪日", "Payday"), payday),
+            (L10n.t(lang, "带薪摸鱼", "Paid slacking"), money(fishEarned)),
         ]
     }
 }
@@ -128,14 +133,16 @@ struct WidgetLayout {
     let tipLines: Int
     let windowSize: CGSize
 
-    init(size: WidgetSize, odometerLogicalWidth: Int, receiptFraction: Double) {
+    init(size: WidgetSize, odometerLogicalWidth: Int, receiptFraction: Double, language: AppLanguage = .zhHans) {
         let u = WidgetLayout.u
         let pad: CGFloat
+        let baseTipLines: Int
         switch size {
-        case .small: (spriteScale, digitScale, pad, tipLines) = (0, 2, 6, 3)
-        case .medium: (spriteScale, digitScale, pad, tipLines) = (2, 3, 8, 2)
-        case .large: (spriteScale, digitScale, pad, tipLines) = (3, 4, 10, 2)
+        case .small: (spriteScale, digitScale, pad, baseTipLines) = (0, 2, 6, 3)
+        case .medium: (spriteScale, digitScale, pad, baseTipLines) = (2, 3, 8, 2)
+        case .large: (spriteScale, digitScale, pad, baseTipLines) = (3, 4, 10, 2)
         }
+        tipLines = baseTipLines + (language == .en ? 1 : 0)
         let dioramaOuter = spriteScale > 0 ? CGFloat(Diorama.size + 2) * spriteScale : 0
         let statusH: CGFloat = 16
         let gap: CGFloat = size == .large ? 8 : 6
@@ -143,7 +150,7 @@ struct WidgetLayout {
         let barH: CGFloat = 8
         let columnH = statusH + gap + odoH + gap + barH
         let innerH = max(columnH, dioramaOuter)
-        let columnW = max(CGFloat(odometerLogicalWidth) * digitScale, 156)
+        let columnW = max(CGFloat(odometerLogicalWidth) * digitScale, language == .en ? 196 : 156)
         let left = u + pad
         let colX = left + (dioramaOuter > 0 ? dioramaOuter + 10 : 0)
         let panelW = colX + columnW + pad + u
@@ -200,7 +207,8 @@ final class WidgetView: NSView {
     func apply(_ st: WidgetState) -> CGSize {
         state = st
         odometer.layout(currency: st.settings.currency, intDigits: st.intDigits, decimals: st.settings.decimals)
-        layout = WidgetLayout(size: st.size, odometerLogicalWidth: odometer.logicalWidth, receiptFraction: st.receipt)
+        layout = WidgetLayout(size: st.size, odometerLogicalWidth: odometer.logicalWidth,
+                              receiptFraction: st.receipt, language: st.settings.language)
         return layout.windowSize
     }
 
@@ -209,10 +217,12 @@ final class WidgetView: NSView {
     override func isAccessibilityElement() -> Bool { true }
     override func accessibilityRole() -> NSAccessibility.Role? { .staticText }
     override func accessibilityLabel() -> String? {
-        guard let snap = state.snap else { return "上班激励器" }
-        let what = snap.status == .off ? "本月已赚" : "今日已赚"
+        let lang = state.settings.language
+        guard let snap = state.snap else { return L10n.t(lang, "上班激励器", "Work Motivator") }
+        let what = L10n.t(lang, snap.status == .off ? "本月已赚" : "今日已赚",
+                          snap.status == .off ? "This month" : "Today")
         let money = PayCore.formatMoney(state.counterValue, state.settings, decimals: 2)
-        return "\(state.chip.text)，\(what) \(money)，\(state.right.label)\(state.right.value)"
+        return "\(state.chip.text), \(what) \(money), \(state.right.label)\(state.right.value)"
     }
 
     // MARK: 鼠标：拖动搬家，单击拉出/收起工资条，右键菜单
@@ -389,12 +399,13 @@ final class WidgetView: NSView {
 
         let tx = R.minX + 10, tr = R.maxX - 10
         var y = top + 8
+        let receiptTitle = L10n.t(st.settings.language, "工 资 条", "PAY SLIP")
         if let snap = st.snap {
-            PixelFont.draw("工 资 条", at: CGPoint(x: tx, y: y), color: Pal.paperInk)
+            PixelFont.draw(receiptTitle, at: CGPoint(x: tx, y: y), color: Pal.paperInk)
             let ym = "\(snap.year).\(String(format: "%02d", snap.month))"
             PixelFont.draw(ym, at: CGPoint(x: tr - PixelFont.width(ym), y: y), color: Pal.paperFaint)
         } else {
-            PixelFont.draw("工 资 条", at: CGPoint(x: tx, y: y), color: Pal.paperInk)
+            PixelFont.draw(receiptTitle, at: CGPoint(x: tx, y: y), color: Pal.paperInk)
         }
         y += 16
         dashed(ctx, x0: tx, x1: tr, y: y + 2)
@@ -407,7 +418,8 @@ final class WidgetView: NSView {
             y += 16
         }
         y += 16 * CGFloat(max(0, 6 - st.receiptRows.count))
-        PixelFont.draw("* 已过的工作日按满勤计", at: CGPoint(x: tx, y: y), color: Pal.paperFaint)
+        PixelFont.draw(L10n.t(st.settings.language, "* 已过的工作日按满勤计", "* Past workdays paid in full"),
+                       at: CGPoint(x: tx, y: y), color: Pal.paperFaint)
         y += 16
         dashed(ctx, x0: tx, x1: tr, y: y + 2)
         y += 8

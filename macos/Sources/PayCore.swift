@@ -17,6 +17,7 @@ struct PaySettings: Codable, Equatable {
     enum MenuBarMode: String, Codable, CaseIterable { case today, month, countdown, off }
 
     var salaryType: SalaryType = .monthly
+    var language: AppLanguage = .zhHans
     var salary: Double = 0
     var dayMode: DayMode = .actual
     var customDays: Double = 22
@@ -45,6 +46,21 @@ struct PaySettings: Codable, Equatable {
         Wish(name: "一部新手机", price: 5999),
         Wish(name: "一次旅行", price: 8000),
     ]
+    static let defaultWishlistEN: [Wish] = [
+        Wish(name: "Milk tea", price: 15),
+        Wish(name: "Movie ticket", price: 45),
+        Wish(name: "T-shirt", price: 99),
+        Wish(name: "Hot pot", price: 150),
+        Wish(name: "Running shoes", price: 599),
+        Wish(name: "ANC headphones", price: 1499),
+        Wish(name: "Game console", price: 2599),
+        Wish(name: "New phone", price: 5999),
+        Wish(name: "Trip", price: 8000),
+    ]
+
+    static func defaultWishlist(for language: AppLanguage) -> [Wish] {
+        language == .en ? defaultWishlistEN : defaultWishlist
+    }
 
     init() {}
 
@@ -56,6 +72,7 @@ struct PaySettings: Codable, Equatable {
             (try? c.decodeIfPresent(T.self, forKey: key)) ?? fallback
         }
         salaryType = get(.salaryType, d.salaryType)
+        language = get(.language, d.language)
         salary = get(.salary, d.salary)
         dayMode = get(.dayMode, d.dayMode)
         customDays = get(.customDays, d.customDays)
@@ -70,7 +87,7 @@ struct PaySettings: Codable, Equatable {
         decimals = get(.decimals, d.decimals)
         menuBar = get(.menuBar, d.menuBar)
         sound = get(.sound, d.sound)
-        wishlist = get(.wishlist, d.wishlist)
+        wishlist = get(.wishlist, PaySettings.defaultWishlist(for: language))
         normalize()
     }
 
@@ -141,10 +158,24 @@ enum SettingsField: String {
 
 enum PayCore {
     static let weekdayCN = ["日", "一", "二", "三", "四", "五", "六"]
-    static let statusText: [PaySnapshot.Status: String] = [
-        .setup: "待设置", .before: "未上班", .working: "上班中",
-        .lunch: "午休中", .after: "已下班", .off: "休息日",
-    ]
+    static let weekdayEN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+    static func statusText(_ status: PaySnapshot.Status, _ language: AppLanguage) -> String {
+        if language == .en {
+            switch status {
+            case .setup: return "Set up"
+            case .before: return "Before work"
+            case .working: return "Working"
+            case .lunch: return "Lunch"
+            case .after: return "Off work"
+            case .off: return "Day off"
+            }
+        }
+        return [
+            .setup: "待设置", .before: "未上班", .working: "上班中",
+            .lunch: "午休中", .after: "已下班", .off: "休息日",
+        ][status]!
+    }
 
     static var calendar: Calendar = {
         var c = Calendar(identifier: .gregorian)
@@ -157,16 +188,20 @@ enum PayCore {
     /// 按字段给出错误提示；空数组表示可以保存。
     static func validate(_ s: PaySettings) -> [(field: SettingsField, message: String)] {
         var e: [(SettingsField, String)] = []
-        if !(s.salary > 0) { e.append((.salary, "工资要填一个大于 0 的数")) }
-        if s.end <= s.start { e.append((.end, "下班时间要晚于上班时间（暂不支持跨零点的班次）")) }
+        func tr(_ zh: String, _ en: String) -> String { L10n.t(s.language, zh, en) }
+        if !(s.salary > 0) { e.append((.salary, tr("工资要填一个大于 0 的数", "Enter a salary greater than 0"))) }
+        if s.end <= s.start {
+            e.append((.end, tr("下班时间要晚于上班时间（暂不支持跨零点的班次）",
+                               "End time must be after start time (overnight shifts are not supported)")))
+        }
         if s.lunchEnabled {
             if s.lunchEnd <= s.lunchStart {
-                e.append((.lunch, "午休结束要晚于开始"))
+                e.append((.lunch, tr("午休结束要晚于开始", "Lunch end must be after its start")))
             } else if s.lunchStart < s.start || s.lunchEnd > s.end {
-                e.append((.lunch, "午休要落在上下班时间之内"))
+                e.append((.lunch, tr("午休要落在上下班时间之内", "Lunch must fall within working hours")))
             }
         }
-        if s.workdays.isEmpty { e.append((.workdays, "至少选一天上班")) }
+        if s.workdays.isEmpty { e.append((.workdays, tr("至少选一天上班", "Select at least one working day"))) }
         return e
     }
 
@@ -241,12 +276,13 @@ enum PayCore {
             let hm = formatTime(Int(first.start) / 60)
             let label: String
             switch i {
-            case 0: label = "今天 \(hm)"
-            case 1: label = "明天 \(hm)"
-            case 2..<7: label = "周\(weekdayCN[weekday]) \(hm)"
+            case 0: label = s.language == .en ? "Today \(hm)" : "今天 \(hm)"
+            case 1: label = s.language == .en ? "Tomorrow \(hm)" : "明天 \(hm)"
+            case 2..<7:
+                label = s.language == .en ? "\(weekdayEN[weekday]) \(hm)" : "周\(weekdayCN[weekday]) \(hm)"
             default:
                 let c = cal.dateComponents([.month, .day], from: day)
-                label = "\(c.month!)月\(c.day!)日 \(hm)"
+                label = s.language == .en ? "\(c.month!)/\(c.day!) \(hm)" : "\(c.month!)月\(c.day!)日 \(hm)"
             }
             return NextStart(date: start, label: label)
         }
@@ -337,8 +373,18 @@ enum PayCore {
         return String(format: "%d:%02d:%02d", t / 3600, t % 3600 / 60, t % 60)
     }
 
-    /// 计薪秒 → "2 小时 53 分"；超过一天半的工时折成工作日。
-    static func formatWorkTime(_ sec: Double, paidPerDay: Double) -> String {
+    /// 计薪秒 → "2 小时 53 分" / "2 hr 53 min"；超过一天半的工时折成工作日。
+    static func formatWorkTime(_ sec: Double, paidPerDay: Double, language: AppLanguage = .zhHans) -> String {
+        if language == .en {
+            if sec < 60 { return "under 1 min" }
+            if paidPerDay > 0, sec > paidPerDay * 1.5 {
+                let days = sec / paidPerDay
+                return (days < 10 ? String(format: "%.1f", days) : String(Int(days.rounded()))) + " workdays"
+            }
+            let h = Int(sec) / 3600, mm = Int(sec) % 3600 / 60
+            if h == 0 { return "\(mm) min" }
+            return "\(h) hr" + (mm > 0 ? " \(mm) min" : "")
+        }
         if sec < 60 { return "不到 1 分钟" }
         if paidPerDay > 0, sec > paidPerDay * 1.5 {
             let days = sec / paidPerDay
@@ -356,7 +402,11 @@ enum PayCore {
     /// 工资条上轮播的提示，每条都带具体数字。
     static func tips(_ s: PaySettings, _ snap: PaySnapshot) -> [String] {
         func money(_ v: Double, _ dec: Int = 2) -> String { formatMoney(v, s, decimals: dec) }
-        if snap.status == .setup { return ["右键 › 设置，填好工资和上下班时间就开始计时。"] }
+        func tr(_ zh: String, _ en: String) -> String { L10n.t(s.language, zh, en) }
+        if snap.status == .setup {
+            return [tr("右键 › 设置，填好工资和上下班时间就开始计时。",
+                       "Right-click › Settings, then enter your salary and working hours to start.")]
+        }
 
         var out: [String] = []
         let items = s.wishlist.sorted { $0.price < $1.price }
@@ -364,26 +414,43 @@ enum PayCore {
 
         if [.working, .lunch, .before].contains(snap.status), snap.rate > 0,
            let next = items.first(where: { $0.price > earned }) {
-            let need = formatWorkTime((next.price - earned) / snap.rate, paidPerDay: snap.paidPerDay)
-            out.append("再工作 \(need)，就能赚到\(next.name)（\(money(next.price, 0))）。")
+            let need = formatWorkTime((next.price - earned) / snap.rate, paidPerDay: snap.paidPerDay, language: s.language)
+            out.append(tr("再工作 \(need)，就能赚到\(next.name)（\(money(next.price, 0))）。",
+                          "Another \(need) of work earns you \(next.name) (\(money(next.price, 0)))."))
         }
         switch snap.status {
-        case .working: out.append("这一分钟又进账 \(money(snap.rate * 60))，一小时就是 \(money(snap.hourly))。")
-        case .lunch: out.append("午休不计薪，吃饱再战。还有 \(formatClock(snap.countdown)) 开工。")
-        case .before: out.append("今天满勤能赚 \(money(snap.dailyPay))，\(formatClock(snap.countdown)) 后开始进账。")
+        case .working:
+            out.append(tr("这一分钟又进账 \(money(snap.rate * 60))，一小时就是 \(money(snap.hourly))。",
+                          "This minute adds \(money(snap.rate * 60)); one hour earns \(money(snap.hourly))."))
+        case .lunch:
+            out.append(tr("午休不计薪，吃饱再战。还有 \(formatClock(snap.countdown)) 开工。",
+                          "Lunch is unpaid. Back to work in \(formatClock(snap.countdown))."))
+        case .before:
+            out.append(tr("今天满勤能赚 \(money(snap.dailyPay))，\(formatClock(snap.countdown)) 后开始进账。",
+                          "A full day earns \(money(snap.dailyPay)). Earnings start in \(formatClock(snap.countdown))."))
         case .after:
-            out.append("今天的 \(money(snap.dailyPay)) 已经到手，收工！")
-            out.append("还没走？现在多待的每一秒都是免费加班。")
-        case .off: out.append("今天休息，本月已赚 \(money(snap.monthEarned))。")
+            out.append(tr("今天的 \(money(snap.dailyPay)) 已经到手，收工！",
+                          "Today's \(money(snap.dailyPay)) is earned. Time to clock out!"))
+            out.append(tr("还没走？现在多待的每一秒都是免费加班。",
+                          "Still here? Every extra second is unpaid overtime."))
+        case .off:
+            out.append(tr("今天休息，本月已赚 \(money(snap.monthEarned))。",
+                          "Day off. You've earned \(money(snap.monthEarned)) this month."))
         case .setup: break
         }
         if snap.status != .before, snap.status != .off,
            let got = items.last(where: { $0.price <= earned }) {
             let n = Int(earned / got.price)
-            out.append("今天已经赚到\(n > 1 ? countOf(got.name, n) : got.name)了。")
+            if s.language == .en {
+                out.append("Today's earnings cover \(n > 1 ? "\(got.name) ×\(n)" : got.name).")
+            } else {
+                out.append("今天已经赚到\(n > 1 ? countOf(got.name, n) : got.name)了。")
+            }
         }
         if let days = snap.paydayDays {
-            out.append(days == 0 ? "今天发工资，记得查账。" : "离发工资还有 \(days) 天。")
+            out.append(days == 0
+                ? tr("今天发工资，记得查账。", "It's payday—remember to check your account.")
+                : tr("离发工资还有 \(days) 天。", days == 1 ? "1 day until payday." : "\(days) days until payday."))
         }
         return out
     }
@@ -391,32 +458,35 @@ enum PayCore {
     /// 菜单栏上的那一小段文字。
     static func menuBarText(_ s: PaySettings, _ snap: PaySnapshot) -> String {
         if s.menuBar == .off { return "" }
-        if snap.status == .setup { return "待设置" }
+        if snap.status == .setup { return statusText(.setup, s.language) }
         switch s.menuBar {
         case .month: return formatMoney(snap.monthEarned, s, decimals: 2)
         case .countdown:
             switch snap.status {
-            case .working: return "下班 " + formatClock(snap.countdown)
-            case .lunch: return "开工 " + formatClock(snap.countdown)
-            case .before: return "上班 " + formatClock(snap.countdown)
-            default: return statusText[snap.status]!
+            case .working: return L10n.t(s.language, "下班 ", "Off in ") + formatClock(snap.countdown)
+            case .lunch: return L10n.t(s.language, "开工 ", "Back in ") + formatClock(snap.countdown)
+            case .before: return L10n.t(s.language, "上班 ", "Start in ") + formatClock(snap.countdown)
+            default: return statusText(snap.status, s.language)
             }
         default:
-            return snap.status == .off ? "休息日" : formatMoney(snap.earnedToday, s, decimals: 2)
+            return snap.status == .off ? statusText(.off, s.language) : formatMoney(snap.earnedToday, s, decimals: 2)
         }
     }
 
     /// 菜单里的几行说明。
     static func menuLines(_ s: PaySettings, _ snap: PaySnapshot) -> [String] {
-        if snap.status == .setup { return ["还没设置工资"] }
-        var lines = ["\(statusText[snap.status]!) · 今日已赚 \(formatMoney(snap.earnedToday, s))"]
+        func tr(_ zh: String, _ en: String) -> String { L10n.t(s.language, zh, en) }
+        if snap.status == .setup { return [tr("还没设置工资", "Salary not set")] }
+        var lines = [tr("\(statusText(snap.status, s.language)) · 今日已赚 \(formatMoney(snap.earnedToday, s))",
+                        "\(statusText(snap.status, s.language)) · Today \(formatMoney(snap.earnedToday, s))")]
         switch snap.status {
-        case .working: lines.append("距离下班 " + formatClock(snap.countdown))
-        case .lunch: lines.append("午休还剩 " + formatClock(snap.countdown))
-        case .before: lines.append("距离上班 " + formatClock(snap.countdown))
-        default: if let next = snap.nextStart { lines.append("下次上班 " + next.label) }
+        case .working: lines.append(tr("距离下班 ", "Off work in ") + formatClock(snap.countdown))
+        case .lunch: lines.append(tr("午休还剩 ", "Back to work in ") + formatClock(snap.countdown))
+        case .before: lines.append(tr("距离上班 ", "Work starts in ") + formatClock(snap.countdown))
+        default:
+            if let next = snap.nextStart { lines.append(tr("下次上班 ", "Next start: ") + next.label) }
         }
-        lines.append("本月已赚 " + formatMoney(snap.monthEarned, s, decimals: 2))
+        lines.append(tr("本月已赚 ", "This month: ") + formatMoney(snap.monthEarned, s, decimals: 2))
         return lines
     }
 }

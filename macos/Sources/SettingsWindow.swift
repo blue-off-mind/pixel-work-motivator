@@ -8,6 +8,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     var onClose: (() -> Void)?
 
     private let salaryType = NSPopUpButton()
+    private let languageControl = NSPopUpButton()
     private let salaryField = NSTextField()
     private let salaryUnit = NSTextField(labelWithString: "元 / 月")
     private let dayMode = NSPopUpButton()
@@ -33,15 +34,19 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let wishes = NSTextView()
     private let error = NSTextField(labelWithString: "")
     private let firstRun: Bool
+    private let language: AppLanguage
+    private let originalSettings: PaySettings?
 
     /// 分段控件从"一"排到"日"，对应 weekday 1…6、0。
     private static let weekdayOrder = [1, 2, 3, 4, 5, 6, 0]
 
     init(settings: PaySettings?, size widgetSize: WidgetSize, opacity alpha: Double, launchAtLogin: Bool) {
         firstRun = settings == nil
+        language = settings?.language ?? .zhHans
+        originalSettings = settings
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 480, height: 640),
                               styleMask: [.titled, .closable], backing: .buffered, defer: false)
-        window.title = "上班激励器 · 设置"
+        window.title = L10n.t(language, "上班激励器 · 设置", "Work Motivator · Settings")
         window.isReleasedWhenClosed = false
         super.init(window: window)
         window.delegate = self
@@ -55,20 +60,40 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     // MARK: 搭界面
 
+    private func tr(_ zh: String, _ en: String) -> String { L10n.t(language, zh, en) }
+
     private func build() {
-        salaryType.addItems(withTitles: ["月薪", "日薪", "时薪"])
-        dayMode.addItems(withTitles: ["按当月实际工作日", "按 21.75 天", "自定义天数"])
-        payday.addItem(withTitle: "不显示")
-        payday.addItems(withTitles: (1...31).map { "每月 \($0) 号" })
+        languageControl.addItems(withTitles: ["简体中文", "English"])
+        salaryType.addItems(withTitles: language == .en ? ["Monthly", "Daily", "Hourly"] : ["月薪", "日薪", "时薪"])
+        dayMode.addItems(withTitles: language == .en
+            ? ["Actual workdays this month", "21.75 days", "Custom days"]
+            : ["按当月实际工作日", "按 21.75 天", "自定义天数"])
+        payday.addItem(withTitle: tr("不显示", "Hidden"))
+        payday.addItems(withTitles: (1...31).map { tr("每月 \($0) 号", "Day \($0)") })
         currency.addItems(withTitles: PaySettings.currencies)
-        decimals.addItems(withTitles: (2...6).map { "\($0) 位" })
-        menuBar.addItems(withTitles: ["今日已赚", "本月已赚", "下班倒计时", "只显示图标"])
+        decimals.addItems(withTitles: (2...6).map { tr("\($0) 位", "\($0) digits") })
+        menuBar.addItems(withTitles: language == .en
+            ? ["Today's earnings", "This month's earnings", "Countdown to off work", "Icon only"]
+            : ["今日已赚", "本月已赚", "下班倒计时", "只显示图标"])
+        lunch.title = tr("午休不计薪", "Unpaid lunch break")
+        lunchTo.stringValue = tr("至", "to")
+        sound.title = tr("进账时播放金币音", "Play a coin sound as earnings increase")
+        login.title = tr("开机自动启动", "Launch at login")
+        let weekdays = language == .en ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] : ["一", "二", "三", "四", "五", "六", "日"]
+        for (i, title) in weekdays.enumerated() { workdays.setLabel(title, forSegment: i) }
+        for (i, widgetSize) in WidgetSize.allCases.enumerated() {
+            size.setLabel(widgetSize.title(language), forSegment: i)
+        }
+        for picker in [start, end, lunchStart, lunchEnd] {
+            picker.locale = Locale(identifier: language == .en ? "en_GB" : "zh_CN")
+        }
         for control in [salaryType, dayMode] as [NSControl] + [lunch] {
             control.target = self
             control.action = #selector(refreshEnabled)
         }
 
-        salaryField.placeholderString = "例如 8000"
+        salaryField.placeholderString = tr("例如 8000", "e.g. 8000")
+        customDaysUnit.stringValue = tr("天", "days")
         salaryField.widthAnchor.constraint(equalToConstant: 120).isActive = true
         customDays.widthAnchor.constraint(equalToConstant: 48).isActive = true
         opacity.widthAnchor.constraint(equalToConstant: 110).isActive = true
@@ -109,23 +134,25 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             rows.append([l, stack])
         }
 
-        header("工资")
-        row("计薪方式", salaryType)
-        row("金额", salaryField, salaryUnit)
-        row("日薪折算", dayMode, customDays, customDaysUnit)
-        header("上下班")
-        row("上班时间", start, inline("下班时间"), end)
-        row("午休", lunch, lunchStart, lunchTo, lunchEnd)
-        row("工作日", workdays)
-        header("显示")
-        row("发薪日", payday)
-        row("货币", currency, inline("小数位"), decimals)
-        row("菜单栏", menuBar)
-        row("悬浮窗大小", size, inline("不透明度"), opacity)
+        header(tr("工资", "Salary"))
+        row(tr("计薪方式", "Pay type"), salaryType)
+        row(tr("金额", "Amount"), salaryField, salaryUnit)
+        row(tr("日薪折算", "Daily pay basis"), dayMode, customDays, customDaysUnit)
+        header(tr("上下班", "Working hours"))
+        row(tr("上班时间", "Start time"), start, inline(tr("下班时间", "End time")), end)
+        row(tr("午休", "Lunch"), lunch, lunchStart, lunchTo, lunchEnd)
+        row(tr("工作日", "Workdays"), workdays)
+        header(tr("显示", "Display"))
+        row(tr("语言", "Language"), languageControl)
+        row(tr("发薪日", "Payday"), payday)
+        row(tr("货币", "Currency"), currency, inline(tr("小数位", "Decimals")), decimals)
+        row(tr("菜单栏", "Menu bar"), menuBar)
+        row(tr("悬浮窗大小", "Widget size"), size, inline(tr("不透明度", "Opacity")), opacity)
         row("", sound)
         row("", login)
-        header("心愿单")
-        row("", hint("每行一项：名称 价格，例如「一杯奶茶 15」。悬浮窗会算出还要工作多久才买得起。"))
+        header(tr("心愿单", "Wishlist"))
+        row("", hint(tr("每行一项：名称 价格，例如「一杯奶茶 15」。悬浮窗会算出还要工作多久才买得起。",
+                        "One item per line: Name Price, e.g. “Milk tea 15”. The widget calculates how much longer you need to work to afford it.")))
         row("", scroll)
 
         let grid = NSGridView(views: rows)
@@ -140,14 +167,16 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             if i > 0 { grid.row(at: i).topPadding = 10 }
         }
 
-        let intro = NSTextField(wrappingLabelWithString:
-            "先填工资和上下班时间。保存后，屏幕右上角的像素悬浮窗就开始实时跳钱；之后右键悬浮窗、或点菜单栏的金币，都能回来改。")
+        let intro = NSTextField(wrappingLabelWithString: tr(
+            "先填工资和上下班时间。保存后，屏幕右上角的像素悬浮窗就开始实时跳钱；之后右键悬浮窗、或点菜单栏的金币，都能回来改。",
+            "Enter your salary and working hours. After saving, the pixel widget in the upper-right corner starts counting your earnings. Right-click the widget or click the menu-bar coin to return here."))
         intro.preferredMaxLayoutWidth = 420
         intro.isHidden = !firstRun
 
-        let cancel = NSButton(title: "取消", target: self, action: #selector(cancel))
+        let cancel = NSButton(title: tr("取消", "Cancel"), target: self, action: #selector(cancel))
         cancel.keyEquivalent = "\u{1b}"
-        let save = NSButton(title: firstRun ? "保存并开始计时" : "保存", target: self, action: #selector(save))
+        let save = NSButton(title: firstRun ? tr("保存并开始计时", "Save and start") : tr("保存", "Save"),
+                            target: self, action: #selector(save))
         save.keyEquivalent = "\r"
         let spacer = NSView()
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
@@ -214,6 +243,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     // MARK: 读写
 
     private func load(_ s: PaySettings, size widgetSize: WidgetSize, opacity alpha: Double, launchAtLogin: Bool) {
+        languageControl.selectItem(at: AppLanguage.allCases.firstIndex(of: s.language) ?? 0)
         salaryType.selectItem(at: PaySettings.SalaryType.allCases.firstIndex(of: s.salaryType) ?? 0)
         salaryField.stringValue = s.salary > 0 ? Self.plain(s.salary) : ""
         dayMode.selectItem(at: PaySettings.DayMode.allCases.firstIndex(of: s.dayMode) ?? 0)
@@ -238,7 +268,9 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     @objc private func refreshEnabled() {
         let type = PaySettings.SalaryType.allCases[max(0, salaryType.indexOfSelectedItem)]
-        salaryUnit.stringValue = ["元 / 月", "元 / 天", "元 / 小时"][max(0, salaryType.indexOfSelectedItem)]
+        salaryUnit.stringValue = language == .en
+            ? ["/ month", "/ day", "/ hour"][max(0, salaryType.indexOfSelectedItem)]
+            : ["元 / 月", "元 / 天", "元 / 小时"][max(0, salaryType.indexOfSelectedItem)]
         dayMode.isEnabled = type == .monthly
         customDays.isEnabled = type == .monthly && dayMode.indexOfSelectedItem == 2
         let lunchOn = lunch.state == .on
@@ -249,6 +281,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     @objc private func save() {
         var s = PaySettings()
+        s.language = AppLanguage.allCases[max(0, languageControl.indexOfSelectedItem)]
         s.salaryType = PaySettings.SalaryType.allCases[max(0, salaryType.indexOfSelectedItem)]
         s.salary = Self.number(salaryField.stringValue) ?? 0
         s.dayMode = PaySettings.DayMode.allCases[max(0, dayMode.indexOfSelectedItem)]
@@ -265,6 +298,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         s.menuBar = PaySettings.MenuBarMode.allCases[max(0, menuBar.indexOfSelectedItem)]
         s.sound = sound.state == .on
         s.wishlist = Self.parseWishes(wishes.string)
+        let previousLanguage = originalSettings?.language ?? .zhHans
+        if s.language != previousLanguage, s.wishlist == PaySettings.defaultWishlist(for: previousLanguage) {
+            s.wishlist = PaySettings.defaultWishlist(for: s.language)
+        }
         s.normalize()
 
         if let problem = PayCore.validate(s).first {
@@ -282,8 +319,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let widgetSize = WidgetSize.allCases[max(0, size.selectedSegment)]
         if let loginError = onSave?(s, widgetSize, opacity.doubleValue, login.state == .on) {
             let alert = NSAlert()
-            alert.messageText = "设置已保存，但开机自动启动没有打开"
-            alert.informativeText = loginError + "\n\n把「上班激励器」拖进「应用程序」文件夹后再试一次。"
+            alert.messageText = L10n.t(s.language, "设置已保存，但开机自动启动没有打开",
+                                       "Settings saved, but launch at login could not be enabled")
+            alert.informativeText = loginError + L10n.t(s.language,
+                "\n\n把「上班激励器」拖进「应用程序」文件夹后再试一次。",
+                "\n\nMove Work Motivator into the Applications folder and try again.")
             alert.runModal()
         }
         window?.close()

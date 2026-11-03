@@ -3,11 +3,12 @@ import Foundation
 
 enum WidgetSize: String, Codable, CaseIterable {
     case small, medium, large
-    var title: String {
+    var title: String { title(.zhHans) }
+    func title(_ language: AppLanguage) -> String {
         switch self {
-        case .small: return "小"
-        case .medium: return "中"
-        case .large: return "大"
+        case .small: return L10n.t(language, "小", "Small")
+        case .medium: return L10n.t(language, "中", "Medium")
+        case .large: return L10n.t(language, "大", "Large")
         }
     }
 }

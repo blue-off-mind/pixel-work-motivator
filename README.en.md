@@ -4,7 +4,7 @@
 
 A pixel-art floating widget for your desktop. Enter your salary and working hours, and it shows how much you have earned today, rolling the digits upward in real time.
 
-![At work](docs/screenshots/working.png)
+![At work](docs/screenshots/en/working.png)
 
 ## Features
 
@@ -13,24 +13,26 @@ A pixel-art floating widget for your desktop. Enter your salary and working hour
 - **Click to print a pay slip**: A receipt emerges from the paper slot at the bottom of the widget, showing this month's earnings, a full day's pay, hourly pay, today's progress, days until payday, and earnings during paid slacking time. It also includes context-aware tips such as “Work for another 2 hours and 53 minutes to earn a T-shirt (¥99).”
 - **Menu-bar coin**: Choose to show today's earnings, this month's earnings, or a countdown to the end of work in the menu bar.
 - **Paid slacking timer**, **click-through lock**, **three sizes**, **adjustable opacity**, **launch at login**, and an **8-bit coin sound** (off by default).
+- **Chinese and English UI**: Choose 简体中文 or English under “Settings › Display › Language”. Saving switches the menus, widget, pay slip, and tips together.
 - Always on top and visible across all desktops and full-screen apps. Clicking it does not steal focus from the current app. It works entirely offline, and all data stays on your Mac.
 
 | Pay slip | Lunch break | End of work |
 |---|---|---|
-| ![Pay slip](docs/screenshots/receipt.png) | ![Lunch break](docs/screenshots/lunch.png) | ![End of work](docs/screenshots/offwork.png) |
+| ![Pay slip](docs/screenshots/en/receipt.png) | ![Lunch break](docs/screenshots/en/lunch.png) | ![End of work](docs/screenshots/en/offwork.png) |
 
 | Paid slacking | Day off (monthly earnings) | Menu bar |
 |---|---|---|
-| ![Paid slacking](docs/screenshots/fishing.png) | ![Day off](docs/screenshots/weekend.png) | ![Menu bar](docs/screenshots/menubar.png) |
+| ![Paid slacking](docs/screenshots/en/fishing.png) | ![Day off](docs/screenshots/en/weekend.png) | ![Menu bar](docs/screenshots/en/menubar.png) |
 
 Three sizes are available: the small size keeps only the counter, while the large size shows the tiny office more clearly.
 
-![Small](docs/screenshots/small.png) ![Large](docs/screenshots/large.png)
+![Small](docs/screenshots/en/small.png) ![Large](docs/screenshots/en/large.png)
 
 ## Installation
 
 1. Open `build/上班激励器.dmg` and drag “上班激励器” into “Applications”.
 2. The settings window opens on first launch. Enter your salary and working hours, then click “保存并开始计时” (Save and start counting).
+3. To use English, choose “English” under “显示 › 语言” (Display › Language) and save. The menus, widget, pay slip, and tips will all switch to English.
 
 A locally built version opens directly. If you share the DMG with someone else, macOS may say that the developer cannot be verified on first launch. Right-click the app and choose “Open”. The app uses ad-hoc signing and has not been notarized by Apple.
 
@@ -61,10 +63,11 @@ See [docs/计算规则.md](docs/计算规则.md) for the complete rules and edge
 The only requirement is `swiftc`, included with Xcode. There are no third-party library dependencies.
 
 ```bash
-./macos/build.sh test   # Run the calculation-core tests (13 groups)
+./macos/build.sh test   # Run the calculation-core tests (14 groups)
 ./macos/build.sh        # Build for the current architecture → build/上班激励器.app
 ./macos/build.sh run    # Build and launch
 ./macos/build.sh dmg    # Test + universal build (Apple Silicon + Intel) + build/上班激励器.dmg
+./macos/screenshots.sh  # Regenerate the English README screenshots
 ```
 
 Ad-hoc signing is used by default. To sign with a certificate, place its name or SHA-1 in a `.codesign-identity` file at the repository root; this file is already listed in `.gitignore`.
@@ -75,6 +78,7 @@ Ad-hoc signing is used by default. To sign with a certificate, place its name or
 macos/
   Sources/
     PayCore.swift           Calculation core (pure Foundation; designed for Windows porting)
+    Localization.swift      Language preference and bilingual text helper
     PixelKit.swift          Palette, pixel bitmaps, cut-corner borders, pixel font, bold digit glyphs
     Odometer.swift          Mechanical-odometer earnings display
     Diorama.swift           24×24 pixel office (sky, worker, piggy bank)

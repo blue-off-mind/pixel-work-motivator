@@ -157,8 +157,8 @@ final class WidgetController: NSObject {
         guard let last = lastStatus, last != snap.status else { return }
         switch (last, snap.status) {
         case (.working, .after): celebrate(t)
-        case (.working, .lunch): announce("干饭！")
-        case (.before, .working), (.lunch, .working): announce("开工！")
+        case (.working, .lunch): announce(L10n.t(settings.language, "干饭！", "Lunch!"))
+        case (.before, .working), (.lunch, .working): announce(L10n.t(settings.language, "开工！", "Back to work!"))
         default: break
         }
     }
@@ -211,7 +211,7 @@ final class WidgetController: NSObject {
 
     private func celebrate(_ t: Double) {
         celebrateUntil = t + 4
-        announce("下班！")
+        announce(L10n.t(settings.language, "下班！", "Off work!"))
         if settings.sound { Sound.fanfare() }
         guard !reducedMotion else { return }
         let w = Double(view.layout.panel.width)
@@ -262,7 +262,11 @@ final class WidgetController: NSObject {
 
     private func rotateTip(_ snap: PaySnapshot, _ s: PaySettings, _ t: Double) {
         var tips = PayCore.tips(s, snap)
-        if isFishing { tips.insert("带薪摸鱼中，已经摸到 \(PayCore.formatMoney(fishEarned(snap), s, decimals: 2))。", at: 0) }
+        if isFishing {
+            let earned = PayCore.formatMoney(fishEarned(snap), s, decimals: 2)
+            tips.insert(L10n.t(s.language, "带薪摸鱼中，已经摸到 \(earned)。",
+                               "Paid slacking: \(earned) earned so far."), at: 0)
+        }
         tipIndex += 1
         tip = tips.isEmpty ? "" : tips[tipIndex % tips.count]
         tipAt = t

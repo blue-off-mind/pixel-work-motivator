@@ -196,5 +196,32 @@ test("菜单栏文字") {
     eq(PayCore.menuLines(base, snap)[1], "距离下班 2:54:21")
 }
 
+test("英文设置、日期、提示和菜单文案") {
+    let en = try! JSONDecoder().decode(PaySettings.self, from: Data(#"{"salary":8000,"language":"en"}"#.utf8))
+    eq(en.language, .en)
+    eq(en.wishlist, PaySettings.defaultWishlistEN)
+    eq(try! JSONDecoder().decode(PaySettings.self, from: JSONEncoder().encode(en)), en)
+
+    let working = PayCore.snapshot(en, at: at(3, 10))
+    eq(PayCore.snapshot(en, at: at(3, 19)).nextStart?.label, "Tomorrow 09:00")
+    eq(PayCore.snapshot(en, at: at(6, 19)).nextStart?.label, "Mon 09:00")
+    eq(PayCore.formatWorkTime(10461, paidPerDay: 8 * 3600, language: .en), "2 hr 54 min")
+    eq(PayCore.formatWorkTime(30, paidPerDay: 8 * 3600, language: .en), "under 1 min")
+    check(PayCore.tips(en, working).joined(separator: " | ").contains("T-shirt"), "英文提示应使用英文心愿单")
+    check(PayCore.menuLines(en, working)[0].hasPrefix("Working · Today "), PayCore.menuLines(en, working)[0])
+    var countdown = en
+    countdown.menuBar = .countdown
+    eq(PayCore.menuBarText(countdown, working), "Off in 8:00:00")
+    eq(PayCore.menuBarText(en, PayCore.snapshot(en, at: at(7, 10))), "Day off")
+    var payday = en
+    payday.payday = 15
+    check(PayCore.tips(payday, PayCore.snapshot(payday, at: at(14, 10))).contains("1 day until payday."),
+          "英文发薪日倒数应使用单数 day")
+
+    var invalid = en
+    invalid.salary = 0
+    eq(PayCore.validate(invalid).first?.message, "Enter a salary greater than 0")
+}
+
 print(failed == 0 ? "\n全部通过" : "\n失败 \(failed) 处")
 exit(failed == 0 ? 0 : 1)

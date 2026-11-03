@@ -71,8 +71,11 @@ enum LoginItem {
     }
 
     /// 返回 nil 表示成功，否则是给人看的错误信息。
-    static func set(_ on: Bool) -> String? {
-        guard #available(macOS 13, *) else { return "开机自动启动需要 macOS 13 或更新的系统。" }
+    static func set(_ on: Bool, language: AppLanguage = .zhHans) -> String? {
+        guard #available(macOS 13, *) else {
+            return L10n.t(language, "开机自动启动需要 macOS 13 或更新的系统。",
+                          "Launch at login requires macOS 13 or later.")
+        }
         do {
             if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
             return nil
@@ -146,7 +149,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         widget.start()
         // 别让系统把计时器"打盹"（App Nap），否则悬浮窗和菜单栏会一卡一卡
         activity = ProcessInfo.processInfo.beginActivity(options: .userInitiatedAllowingIdleSystemSleep,
-                                                         reason: "悬浮窗实时显示工资")
+                                                         reason: L10n.t(widget.settings.language, "悬浮窗实时显示工资",
+                                                                        "Live earnings widget"))
         if store.settings == nil { openSettings(nil) }
     }
 
@@ -195,6 +199,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private func fill(_ menu: NSMenu) {
         menu.removeAllItems()
         let snap = widget.snapshot, s = widget.settings, p = store.prefs
+        let lang = s.language
+        func tr(_ zh: String, _ en: String) -> String { L10n.t(lang, zh, en) }
         let lines = PayCore.menuLines(s, snap).map { line -> NSMenuItem in
             let item = NSMenuItem(title: line, action: nil, keyEquivalent: "")
             item.isEnabled = false
@@ -204,29 +210,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         lines.forEach(menu.addItem)
         let fish = widget.fishEarned(snap)
         if widget.isFishing || fish > 0 {
-            let item = NSMenuItem(title: "今日带薪摸鱼 " + PayCore.formatMoney(fish, s, decimals: 2), action: nil, keyEquivalent: "")
+            let item = NSMenuItem(title: tr("今日带薪摸鱼 ", "Paid slacking today: ")
+                + PayCore.formatMoney(fish, s, decimals: 2), action: nil, keyEquivalent: "")
             item.isEnabled = false
             menu.addItem(item)
         }
 
         menu.addItem(.separator())
-        menu.addItem(action(p.expanded ? "收起工资条" : "拉出工资条", #selector(toggleReceipt)))
-        menu.addItem(action(widget.isFishing ? "结束摸鱼" : "开始带薪摸鱼", #selector(toggleFishing)))
+        menu.addItem(action(p.expanded ? tr("收起工资条", "Collapse pay slip") : tr("拉出工资条", "Show pay slip"), #selector(toggleReceipt)))
+        menu.addItem(action(widget.isFishing ? tr("结束摸鱼", "End slacking") : tr("开始带薪摸鱼", "Start paid slacking"), #selector(toggleFishing)))
 
         menu.addItem(.separator())
-        menu.addItem(action(p.visible ? "隐藏悬浮窗" : "显示悬浮窗", #selector(toggleVisible)))
-        let lock = action("锁定悬浮窗（鼠标穿透）", #selector(toggleLock))
+        menu.addItem(action(p.visible ? tr("隐藏悬浮窗", "Hide widget") : tr("显示悬浮窗", "Show widget"), #selector(toggleVisible)))
+        let lock = action(tr("锁定悬浮窗（鼠标穿透）", "Lock widget (click-through)"), #selector(toggleLock))
         lock.state = p.locked ? .on : .off
         menu.addItem(lock)
 
         let sizeMenu = NSMenu()
         for size in WidgetSize.allCases {
-            let item = action(size.title, #selector(pickSize(_:)))
+            let item = action(size.title(lang), #selector(pickSize(_:)))
             item.representedObject = size.rawValue
             item.state = p.size == size ? .on : .off
             sizeMenu.addItem(item)
         }
-        let sizeItem = NSMenuItem(title: "悬浮窗大小", action: nil, keyEquivalent: "")
+        let sizeItem = NSMenuItem(title: tr("悬浮窗大小", "Widget size"), action: nil, keyEquivalent: "")
         sizeItem.submenu = sizeMenu
         menu.addItem(sizeItem)
 
@@ -237,18 +244,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             item.state = abs(p.opacity - alpha) < 0.01 ? .on : .off
             alphaMenu.addItem(item)
         }
-        let alphaItem = NSMenuItem(title: "不透明度", action: nil, keyEquivalent: "")
+        let alphaItem = NSMenuItem(title: tr("不透明度", "Opacity"), action: nil, keyEquivalent: "")
         alphaItem.submenu = alphaMenu
         menu.addItem(alphaItem)
-        menu.addItem(action("移回屏幕右上角", #selector(resetPosition)))
+        menu.addItem(action(tr("移回屏幕右上角", "Move to upper-right corner"), #selector(resetPosition)))
 
         menu.addItem(.separator())
-        menu.addItem(action("设置…", #selector(openSettings(_:)), key: ","))
-        let login = action("开机自动启动", #selector(toggleLogin))
+        menu.addItem(action(tr("设置…", "Settings…"), #selector(openSettings(_:)), key: ","))
+        let login = action(tr("开机自动启动", "Launch at login"), #selector(toggleLogin))
         login.state = LoginItem.isEnabled ? .on : .off
         menu.addItem(login)
         menu.addItem(.separator())
-        menu.addItem(action("退出上班激励器", #selector(quit), key: "q"))
+        menu.addItem(action(tr("退出上班激励器", "Quit Work Motivator"), #selector(quit), key: "q"))
     }
 
     private func action(_ title: String, _ selector: Selector, key: String = "") -> NSMenuItem {
@@ -273,10 +280,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func toggleLogin() {
-        if let problem = LoginItem.set(!LoginItem.isEnabled) {
+        let lang = widget.settings.language
+        if let problem = LoginItem.set(!LoginItem.isEnabled, language: lang) {
             let alert = NSAlert()
-            alert.messageText = "开机自动启动没有打开"
-            alert.informativeText = problem + "\n\n把「上班激励器」拖进「应用程序」文件夹后再试一次。"
+            alert.messageText = L10n.t(lang, "开机自动启动没有打开", "Launch at login could not be enabled")
+            alert.informativeText = problem + L10n.t(lang,
+                "\n\n把「上班激励器」拖进「应用程序」文件夹后再试一次。",
+                "\n\nMove Work Motivator into the Applications folder and try again.")
             NSApp.activate(ignoringOtherApps: true)
             alert.runModal()
         }
@@ -294,7 +304,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 self.widget.setOpacity(opacity)
                 self.widget.setSize(size)
                 self.widget.settingsChanged()
-                return login != LoginItem.isEnabled ? LoginItem.set(login) : nil
+                self.setupMainMenu()
+                return login != LoginItem.isEnabled ? LoginItem.set(login, language: s.language) : nil
             }
             c.onClose = { [weak self] in
                 self?.settingsController = nil
@@ -309,32 +320,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func setupMainMenu() {
+        let lang = widget.settings.language
+        func tr(_ zh: String, _ en: String) -> String { L10n.t(lang, zh, en) }
         let main = NSMenu()
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "关于上班激励器", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        appMenu.addItem(withTitle: tr("关于上班激励器", "About Work Motivator"), action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
-        appMenu.addItem(action("设置…", #selector(openSettings(_:)), key: ","))
+        appMenu.addItem(action(tr("设置…", "Settings…"), #selector(openSettings(_:)), key: ","))
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "退出上班激励器", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: tr("退出上班激励器", "Quit Work Motivator"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
         main.addItem(appItem)
 
         let editItem = NSMenuItem()
-        let edit = NSMenu(title: "编辑")
-        edit.addItem(withTitle: "撤销", action: Selector(("undo:")), keyEquivalent: "z")
-        edit.addItem(withTitle: "重做", action: Selector(("redo:")), keyEquivalent: "Z")
+        let edit = NSMenu(title: tr("编辑", "Edit"))
+        edit.addItem(withTitle: tr("撤销", "Undo"), action: Selector(("undo:")), keyEquivalent: "z")
+        edit.addItem(withTitle: tr("重做", "Redo"), action: Selector(("redo:")), keyEquivalent: "Z")
         edit.addItem(.separator())
-        edit.addItem(withTitle: "剪切", action: #selector(NSText.cut(_:)), keyEquivalent: "x")
-        edit.addItem(withTitle: "拷贝", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
-        edit.addItem(withTitle: "粘贴", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
-        edit.addItem(withTitle: "全选", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        edit.addItem(withTitle: tr("剪切", "Cut"), action: #selector(NSText.cut(_:)), keyEquivalent: "x")
+        edit.addItem(withTitle: tr("拷贝", "Copy"), action: #selector(NSText.copy(_:)), keyEquivalent: "c")
+        edit.addItem(withTitle: tr("粘贴", "Paste"), action: #selector(NSText.paste(_:)), keyEquivalent: "v")
+        edit.addItem(withTitle: tr("全选", "Select All"), action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
         editItem.submenu = edit
         main.addItem(editItem)
 
         let windowItem = NSMenuItem()
-        let windowMenu = NSMenu(title: "窗口")
-        windowMenu.addItem(withTitle: "关闭", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        let windowMenu = NSMenu(title: tr("窗口", "Window"))
+        windowMenu.addItem(withTitle: tr("关闭", "Close"), action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
         windowItem.submenu = windowMenu
         main.addItem(windowItem)
         NSApp.mainMenu = main

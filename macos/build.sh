@@ -16,7 +16,7 @@ MIN_OS="12.0"
 mkdir -p "$BUILD"
 
 run_tests() {
-  swiftc -swift-version 5 macos/Sources/PayCore.swift macos/Tests/main.swift -o "$BUILD/paycore-tests"
+  swiftc -swift-version 5 macos/Sources/Localization.swift macos/Sources/PayCore.swift macos/Tests/main.swift -o "$BUILD/paycore-tests"
   "$BUILD/paycore-tests"
 }
 
