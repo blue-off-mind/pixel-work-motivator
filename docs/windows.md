@@ -4,7 +4,7 @@ macOS 版是原生 Swift/AppKit，没有网页界面。Windows 版也照这个�
 
 ## 能原样搬过去的
 
-- **计算规则**：照 `macos/Sources/PayCore.swift` 和 [计算规则.md](计算规则.md) 写一份 `PayCore.cs`，再把 `macos/Tests/main.swift` 里的 13 组用例改成 xUnit，确保两边算出来一模一样。
+- **计算规则**：照 `macos/Sources/PayCore.swift` 和 [计算规则.md](计算规则.md) 写一份 `PayCore.cs`，再把 `macos/Tests/main.swift` 里的 17 组用例改成 xUnit，确保两边算出来一模一样。
 - **像素数据**：`PixelKit.swift` 里的数字字形、`Diorama.swift` 里的人物、笔记本、存钱罐、金币帧，`WidgetView.swift` 里的布局常量，都是字符串和数字，直接复制。
 - **调色板**：`Pal` 里的十六进制颜色。
 - **字体**：`macos/Resources/Fonts/` 里的 OTF 和许可证。
@@ -31,7 +31,7 @@ macOS 版是原生 Swift/AppKit，没有网页界面。Windows 版也照这个�
 
 ## 建议步骤
 
-1. `PayCore.cs` 加测试，先跑通 13 组用例。
+1. `PayCore.cs` 加测试，先跑通 17 组用例。
 2. 只画大数字：透明置顶窗口 + 滚轮数字，确认像素清晰、CPU 低。
 3. 加小办公室、进度条、出纸口和工资条。
 4. 托盘菜单、设置窗口、开机自启、音效。

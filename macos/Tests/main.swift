@@ -10,6 +10,10 @@ func at(_ d: Int, _ h: Int = 0, _ mi: Int = 0, _ s: Int = 0) -> Date {
     cal.date(from: DateComponents(year: 2026, month: 11, day: d, hour: h, minute: mi, second: s))!
 }
 
+func ymd(_ y: Int, _ m: Int, _ d: Int, _ h: Int = 0, _ mi: Int = 0, _ s: Int = 0) -> Date {
+    cal.date(from: DateComponents(year: y, month: m, day: d, hour: h, minute: mi, second: s))!
+}
+
 func settings(_ edit: (inout PaySettings) -> Void = { _ in }) -> PaySettings {
     var s = PaySettings()
     s.salary = 8000
@@ -78,8 +82,11 @@ test("午休把一天切成两段，不计薪") {
 }
 
 test("工作日计数") {
-    eq(PayCore.workdaysInMonth(base, year: 2026, month: 11), 21)
-    eq(PayCore.workdaysInMonth(settings { $0.workdays = [1, 2, 3, 4, 5, 6] }, year: 2026, month: 11), 25)
+    eq(PayCore.workdays(base, from: ymd(2026, 11, 1), to: ymd(2026, 12, 1)), 21)
+    let sixDays = settings { $0.workdays = [1, 2, 3, 4, 5, 6] }
+    eq(PayCore.workdays(sixDays, from: ymd(2026, 11, 1), to: ymd(2026, 12, 1)), 25)
+    eq(PayCore.workdays(base, from: ymd(2026, 10, 15), to: ymd(2026, 11, 15)), 22) // 跨月
+    eq(PayCore.workdays(base, from: ymd(2026, 11, 3), to: ymd(2026, 11, 3)), 0)
 }
 
 test("上班中：已赚、倒计时、本月累计") {
@@ -91,8 +98,10 @@ test("上班中：已赚、倒计时、本月累计") {
     close(snap.dailyPay, daily)
     close(snap.hourly, daily / 8)
     eq(snap.countdown, Double(2 * 3600 + 54 * 60 + 21))
-    close(snap.monthEarned, daily + worked * rate) // 11/2 周一按满勤补算
-    close(snap.monthFull, 8000, eps: 1e-6)
+    close(snap.periodEarned, daily + worked * rate) // 11/2 周一按满勤补算
+    close(snap.periodFull, 8000, eps: 1e-6)
+    eq(snap.periodStart, ymd(2026, 11, 1)) // 没设发薪日：自然月
+    eq(snap.periodEnd, ymd(2026, 12, 1))
     close(snap.progress, worked / (8 * 3600))
     check(snap.nextStart == nil, "上班中不需要下次上班时间")
 }
@@ -120,7 +129,7 @@ test("午休、上班前、下班后、休息日、待设置") {
     eq(saturday.status, .off)
     eq(saturday.earnedToday, 0)
     eq(saturday.nextStart?.label, "周一 09:00")
-    close(saturday.monthEarned, 5 * daily)
+    close(saturday.periodEarned, 5 * daily)
 
     let setup = PayCore.snapshot(PaySettings(), at: at(3, 10))
     eq(setup.status, .setup)
@@ -128,7 +137,76 @@ test("午休、上班前、下班后、休息日、待设置") {
 }
 
 test("按当月工作日折算时，月底最后一天下班正好拿满月薪") {
-    close(PayCore.snapshot(base, at: at(30, 19)).monthEarned, 8000, eps: 1e-6)
+    close(PayCore.snapshot(base, at: at(30, 19)).periodEarned, 8000, eps: 1e-6)
+}
+
+test("设了发薪日：本期从上一个发薪日算起") {
+    let s15 = settings { $0.payday = 15 }
+    let daily15 = 8000.0 / 22 // 10/15–11/14 共 22 个工作日
+    let snap = PayCore.snapshot(s15, at: at(3, 15, 5, 39))
+    eq(snap.periodStart, ymd(2026, 10, 15))
+    eq(snap.periodEnd, ymd(2026, 11, 15))
+    eq(snap.periodWorkdays, 22)
+    eq(PayCore.periodRange(snap), "10.15-11.14")
+    close(snap.dailyPay, daily15)
+    let worked = Double(3 * 3600 + 2 * 3600 + 5 * 60 + 39)
+    close(snap.periodEarned, 13 * daily15 + worked * daily15 / (8 * 3600)) // 10/15–11/2 共 13 个工作日按满勤
+    close(snap.periodFull, 8000, eps: 1e-6)
+    check(PayCore.menuLines(s15, snap).last!.hasPrefix("本期已赚 ¥"), PayCore.menuLines(s15, snap).last!)
+
+    close(PayCore.snapshot(s15, at: at(13, 19)).periodEarned, 8000, eps: 1e-6) // 本期最后一个工作日下班
+
+    let payday = PayCore.snapshot(s15, at: at(15, 10)) // 发薪日（周日）开始新的一期
+    eq(payday.periodStart, ymd(2026, 11, 15))
+    eq(payday.periodEnd, ymd(2026, 12, 15))
+    eq(payday.periodEarned, 0)
+    eq(payday.paydayDays, 0)
+
+    let weekend = PayCore.tips(s15, PayCore.snapshot(s15, at: at(7, 10)))
+    check(weekend.contains { $0.hasPrefix("今天休息，本期已赚 ¥") }, weekend.joined(separator: " | "))
+}
+
+test("发薪周期的边界：月底、跨年、二月、1 号") {
+    let s31 = settings { $0.payday = 31 } // 11 月没有 31 号，按 30 号
+    eq(PayCore.snapshot(s31, at: at(3, 10)).periodStart, ymd(2026, 10, 31))
+    eq(PayCore.snapshot(s31, at: at(3, 10)).periodEnd, ymd(2026, 11, 30))
+    eq(PayCore.snapshot(s31, at: at(30, 10)).periodStart, ymd(2026, 11, 30))
+    eq(PayCore.snapshot(s31, at: at(30, 10)).periodEnd, ymd(2026, 12, 31))
+
+    let s15 = settings { $0.payday = 15 }
+    eq(PayCore.snapshot(s15, at: ymd(2027, 1, 5, 10)).periodStart, ymd(2026, 12, 15))
+    eq(PayCore.snapshot(s15, at: ymd(2027, 1, 5, 10)).periodEnd, ymd(2027, 1, 15))
+
+    let s30 = settings { $0.payday = 30 } // 2027 年 2 月只有 28 天
+    eq(PayCore.snapshot(s30, at: ymd(2027, 3, 1, 10)).periodStart, ymd(2027, 2, 28))
+    eq(PayCore.snapshot(s30, at: ymd(2027, 3, 1, 10)).periodEnd, ymd(2027, 3, 30))
+
+    let s1 = PayCore.snapshot(settings { $0.payday = 1 }, at: at(3, 15)) // 1 号发薪 = 自然月
+    eq(s1.periodStart, ymd(2026, 11, 1))
+    close(s1.periodEarned, PayCore.snapshot(base, at: at(3, 15)).periodEarned)
+}
+
+test("日薪 + 15 号发薪：日薪原样用，本期按天累计") {
+    let s = settings {
+        $0.salaryType = .daily
+        $0.salary = 300
+        $0.payday = 15
+        $0.lunchStart = 11 * 60 + 30
+    }
+    let snap = PayCore.snapshot(s, at: at(3, 18, 3, 59))
+    eq(snap.status, .after)
+    eq(snap.dailyPay, 300)
+    close(snap.hourly, 40) // 9:00–18:00 去掉 11:30–13:00 午休，每天 7.5 小时
+    close(snap.periodEarned, 14 * 300) // 10/15 起 13 个工作日 + 今天
+    close(snap.periodFull, 22 * 300)
+    eq(PayCore.menuLines(s, snap).last, "本期已赚 ¥4,200.00")
+
+    var monthly = s // 换成月薪、按实际工作日：除以本期 22 个工作日，不是自然月的 21 个
+    monthly.salaryType = .monthly
+    monthly.salary = 6000
+    let m = PayCore.snapshot(monthly, at: at(3, 18, 3, 59))
+    close(m.dailyPay, 6000.0 / 22)
+    close(m.periodFull, 6000, eps: 1e-6)
 }
 
 test("21.75 天、自定义天数、日薪、时薪") {

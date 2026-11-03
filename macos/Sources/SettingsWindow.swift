@@ -2,7 +2,7 @@
 import AppKit
 
 @MainActor
-final class SettingsWindowController: NSWindowController, NSWindowDelegate {
+final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSTextFieldDelegate {
     /// 保存回调：返回开机启动的错误信息（设置本身已经保存）。
     var onSave: ((PaySettings, WidgetSize, Double, Bool) -> String?)?
     var onClose: (() -> Void)?
@@ -14,6 +14,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let dayMode = NSPopUpButton()
     private let customDays = NSTextField()
     private let customDaysUnit = NSTextField(labelWithString: "天")
+    private let dailyHint = NSTextField(wrappingLabelWithString: "") // 实时显示日薪是怎么算出来的
     private let start = SettingsWindowController.timePicker()
     private let end = SettingsWindowController.timePicker()
     private let lunch = NSButton(checkboxWithTitle: "午休不计薪", target: nil, action: nil)
@@ -66,8 +67,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         languageControl.addItems(withTitles: ["简体中文", "English"])
         salaryType.addItems(withTitles: language == .en ? ["Monthly", "Daily", "Hourly"] : ["月薪", "日薪", "时薪"])
         dayMode.addItems(withTitles: language == .en
-            ? ["Actual workdays this month", "21.75 days", "Custom days"]
-            : ["按当月实际工作日", "按 21.75 天", "自定义天数"])
+            ? ["Actual workdays", "21.75 days", "Custom days"]
+            : ["按实际工作日", "按 21.75 天", "自定义天数"])
         payday.addItem(withTitle: tr("不显示", "Hidden"))
         payday.addItems(withTitles: (1...31).map { tr("每月 \($0) 号", "Day \($0)") })
         currency.addItems(withTitles: PaySettings.currencies)
@@ -87,10 +88,21 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         for picker in [start, end, lunchStart, lunchEnd] {
             picker.locale = Locale(identifier: language == .en ? "en_GB" : "zh_CN")
         }
-        for control in [salaryType, dayMode] as [NSControl] + [lunch] {
+        // 这些一变，日薪说明就跟着重算
+        let live: [NSControl] = [salaryType, dayMode, lunch, payday, currency, workdays, start, end, lunchStart, lunchEnd]
+        for control in live {
             control.target = self
             control.action = #selector(refreshEnabled)
         }
+        salaryField.delegate = self
+        customDays.delegate = self
+        dailyHint.textColor = .secondaryLabelColor
+        dailyHint.font = .systemFont(ofSize: 12)
+        dailyHint.preferredMaxLayoutWidth = 320
+        dailyHint.maximumNumberOfLines = 2
+        dailyHint.cell?.truncatesLastVisibleLine = true
+        dailyHint.stringValue = "-\n-" // 固定两行高，文字变了窗口也不跳
+        dailyHint.heightAnchor.constraint(equalToConstant: dailyHint.fittingSize.height).isActive = true
 
         salaryField.placeholderString = tr("例如 8000", "e.g. 8000")
         customDaysUnit.stringValue = tr("天", "days")
@@ -138,6 +150,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         row(tr("计薪方式", "Pay type"), salaryType)
         row(tr("金额", "Amount"), salaryField, salaryUnit)
         row(tr("日薪折算", "Daily pay basis"), dayMode, customDays, customDaysUnit)
+        row("", dailyHint)
         header(tr("上下班", "Working hours"))
         row(tr("上班时间", "Start time"), start, inline(tr("下班时间", "End time")), end)
         row(tr("午休", "Lunch"), lunch, lunchStart, lunchTo, lunchEnd)
@@ -277,9 +290,61 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         lunchStart.isEnabled = lunchOn
         lunchEnd.isEnabled = lunchOn
         lunchTo.textColor = lunchOn ? .secondaryLabelColor : .disabledControlTextColor
+        menuBar.item(at: 1)?.title = payday.indexOfSelectedItem > 0
+            ? tr("本期已赚", "This period's earnings") : tr("本月已赚", "This month's earnings")
+        refreshHint()
     }
 
-    @objc private func save() {
+    func controlTextDidChange(_ obj: Notification) {
+        refreshHint()
+    }
+
+    /// 按表单现在填的内容算出日薪、时薪，并写明是怎么算的。计薪方式选错了，在这里一眼就能看出来。
+    private func refreshHint() {
+        let s = formSettings()
+        guard s.salary > 0, !PayCore.segments(s).isEmpty, !s.workdays.isEmpty else {
+            dailyHint.stringValue = tr("填好金额和上下班时间，这里会算出日薪和时薪。",
+                                       "Enter the amount and hours to see your daily and hourly pay.")
+            return
+        }
+        let snap = PayCore.snapshot(s, at: Date())
+        func money(_ v: Double) -> String { PayCore.formatMoney(v, s, decimals: 2) }
+        let range = PayCore.periodRange(snap)
+        let n = snap.periodWorkdays
+        let hours = PayCore.formatWorkTime(snap.paidPerDay, paidPerDay: 0, language: language)
+        var lines: [String]
+        switch s.salaryType {
+        case .monthly:
+            let basis: String
+            switch s.dayMode {
+            case .actual:
+                basis = s.payday > 0 ? tr("本期 \(n) 个工作日（\(range)）", "\(n) workdays (\(range))")
+                    : tr("\(snap.month) 月 \(n) 个工作日", "\(n) workdays this month")
+            case .standard: basis = tr("21.75 天", "21.75 days")
+            case .custom: basis = tr("\(Self.plain(s.customDays)) 天", "\(Self.plain(s.customDays)) days")
+            }
+            lines = [tr("折合日薪 \(money(snap.dailyPay))，时薪 \(money(snap.hourly))",
+                        "≈ \(money(snap.dailyPay))/day, \(money(snap.hourly))/hour"),
+                     "= \(Self.plain(s.salary)) ÷ \(basis)"]
+        case .daily:
+            lines = [tr("时薪 \(money(snap.hourly))（每天计薪 \(hours)）",
+                        "\(money(snap.hourly))/hour (\(hours) paid per day)")]
+        case .hourly:
+            lines = [tr("折合日薪 \(money(snap.dailyPay))（每天计薪 \(hours)）",
+                        "≈ \(money(snap.dailyPay))/day (\(hours) paid per day)")]
+        }
+        if s.salaryType != .monthly {
+            lines.append(s.payday > 0
+                ? tr("本期满勤 \(money(snap.periodFull))（\(n) 个工作日，\(range)）",
+                     "Full period \(money(snap.periodFull)) (\(n) workdays, \(range))")
+                : tr("本月满勤 \(money(snap.periodFull))（\(n) 个工作日）",
+                     "Full month \(money(snap.periodFull)) (\(n) workdays)"))
+        }
+        dailyHint.stringValue = lines.joined(separator: "\n")
+    }
+
+    /// 按表单现在的样子拼一份设置（还没校验）。
+    private func formSettings() -> PaySettings {
         var s = PaySettings()
         s.language = AppLanguage.allCases[max(0, languageControl.indexOfSelectedItem)]
         s.salaryType = PaySettings.SalaryType.allCases[max(0, salaryType.indexOfSelectedItem)]
@@ -303,7 +368,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             s.wishlist = PaySettings.defaultWishlist(for: s.language)
         }
         s.normalize()
+        return s
+    }
 
+    @objc private func save() {
+        let s = formSettings()
         if let problem = PayCore.validate(s).first {
             error.stringValue = problem.message
             switch problem.field {

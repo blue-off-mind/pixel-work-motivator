@@ -10,8 +10,8 @@ A pixel-art floating widget for your desktop. Enter your salary and working hour
 
 - **Real-time earnings counter**: Pixel digits styled like a mechanical odometer. The lowest digit spins rapidly while higher digits carry over one by one. Higher digits you have not earned yet appear as dim zeros, and the third and subsequent decimal places are shown in copper.
 - **A tiny pixel office**: A worker types away behind a laptop. As your earnings accumulate, coins fly into the piggy bank in the lower-left corner. Coin denominations are selected automatically, with at least 10 seconds between drops. The bank gradually fills as your workday progresses, and the sky outside changes with the actual time. During lunch, the worker naps at the desk; when work ends, confetti flies.
-- **Click to print a pay slip**: A receipt emerges from the paper slot at the bottom of the widget, showing this month's earnings, a full day's pay, hourly pay, today's progress, days until payday, and earnings during paid slacking time. It also includes context-aware tips such as “Work for another 2 hours and 53 minutes to earn a T-shirt (¥99).”
-- **Menu-bar coin**: Choose to show today's earnings, this month's earnings, or a countdown to the end of work in the menu bar.
+- **Click to print a pay slip**: A receipt emerges from the paper slot at the bottom of the widget, showing this period's earnings (counted from your last payday if one is set), a full day's pay, hourly pay, today's progress, days until payday, and earnings during paid slacking time. It also includes context-aware tips such as “Work for another 2 hours and 53 minutes to earn a T-shirt (¥99).”
+- **Menu-bar coin**: Choose to show today's earnings, this period's earnings, or a countdown to the end of work in the menu bar.
 - **Paid slacking timer**, **click-through lock**, **three sizes**, **adjustable opacity**, **launch at login**, and an **8-bit coin sound** (off by default).
 - **Chinese and English UI**: Choose 简体中文 or English under “Settings › Display › Language”. Saving switches the menus, widget, pay slip, and tips together.
 - Always on top and visible across all desktops and full-screen apps. Clicking it does not steal focus from the current app. It works entirely offline, and all data stays on your Mac.
@@ -20,7 +20,7 @@ A pixel-art floating widget for your desktop. Enter your salary and working hour
 |---|---|---|
 | ![Pay slip](docs/screenshots/en/receipt.png) | ![Lunch break](docs/screenshots/en/lunch.png) | ![End of work](docs/screenshots/en/offwork.png) |
 
-| Paid slacking | Day off (monthly earnings) | Menu bar |
+| Paid slacking | Day off (period earnings) | Menu bar |
 |---|---|---|
 | ![Paid slacking](docs/screenshots/en/fishing.png) | ![Day off](docs/screenshots/en/weekend.png) | ![Menu bar](docs/screenshots/en/menubar.png) |
 
@@ -49,10 +49,10 @@ A locally built version opens directly. If you share the DMG with someone else, 
 
 ## Calculation Rules
 
-- **Daily pay**: Monthly salary ÷ actual working days in the current month. You can use 21.75 days or a custom number instead. Daily or hourly pay can also be entered directly.
+- **Daily pay**: Monthly salary ÷ actual working days in the current pay period. You can use 21.75 days or a custom number instead. If you are paid by the day or hour, choose Daily or Hourly. The settings window shows how your daily pay is calculated as you type.
 - **Pay per second**: Daily pay ÷ paid seconds per day. Lunch is unpaid by default, but this can be changed.
 - **Today's earnings**: Zero before work, accumulated by the second during work, paused during lunch, and equal to a full day's pay after work.
-- **This month's earnings**: Completed working days this month are counted as full days, plus today's earnings.
+- **This period's earnings**: With a payday set, counting starts on your last payday (inclusive). For example, with payday on the 15th, November 3 counts from October 15. Without a payday, the period is the calendar month. Completed working days count as full days, plus today's earnings.
 - **All amounts are rounded down**: The counter never displays money you have not earned yet.
 - Selected weekdays determine days off. Public-holiday adjustments and overnight shifts spanning midnight are not currently supported.
 
@@ -63,7 +63,7 @@ See [docs/计算规则.md](docs/计算规则.md) for the complete rules and edge
 The only requirement is `swiftc`, included with Xcode. There are no third-party library dependencies.
 
 ```bash
-./macos/build.sh test   # Run the calculation-core tests (14 groups)
+./macos/build.sh test   # Run the calculation-core tests (17 groups)
 ./macos/build.sh        # Build for the current architecture → build/上班激励器.app
 ./macos/build.sh run    # Build and launch
 ./macos/build.sh dmg    # Test + universal build (Apple Silicon + Intel) + build/上班激励器.dmg

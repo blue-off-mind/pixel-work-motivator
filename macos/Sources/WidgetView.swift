@@ -55,15 +55,15 @@ struct WidgetState {
             return snap.nextStart.map {
                 lang == .en ? ("", $0.label) : ("", $0.label + " 上班")
             } ?? ("", L10n.t(lang, "收工", "Done"))
-        case .off: return ("", L10n.t(lang, "本月已赚", "This month"))
+        case .off: return ("", PayCore.periodEarnedLabel(settings))
         case .setup: return ("", L10n.t(lang, "右键 › 设置", "Right-click › Settings"))
         }
     }
 
-    /// 休息日大数字显示本月已赚，其余时候显示今日已赚。
+    /// 休息日大数字显示本期（没设发薪日就是本月）已赚，其余时候显示今日已赚。
     var counterValue: Double {
         guard let snap else { return 0 }
-        return snap.status == .off ? snap.monthEarned : snap.earnedToday
+        return snap.status == .off ? snap.periodEarned : snap.earnedToday
     }
 
     /// 只有上班中金额才在涨；其余时候计数器静止。
@@ -72,16 +72,16 @@ struct WidgetState {
         return snap.rate
     }
 
-    /// 整数位按今天（休息日按本月）最多能赚到的钱固定，涨的过程中宽度不变。
+    /// 整数位按今天（休息日按本期）最多能赚到的钱固定，涨的过程中宽度不变。
     var intDigits: Int {
         guard let snap else { return 1 }
-        let top = max(snap.status == .off ? snap.monthFull : snap.dailyPay, counterValue)
+        let top = max(snap.status == .off ? snap.periodFull : snap.dailyPay, counterValue)
         return max(1, String(Int(top.rounded(.down))).count)
     }
 
     var barProgress: Double {
         guard let snap, snap.status != .setup else { return 0 }
-        if snap.status == .off { return snap.monthFull > 0 ? snap.monthEarned / snap.monthFull : 0 }
+        if snap.status == .off { return snap.periodFull > 0 ? snap.periodEarned / snap.periodFull : 0 }
         return snap.progress
     }
 
@@ -106,7 +106,7 @@ struct WidgetState {
         case let d?: payday = L10n.t(lang, "还有 \(d) 天", d == 1 ? "In 1 day" : "In \(d) days")
         }
         return [
-            (L10n.t(lang, "本月已赚", "This month"), money(snap.monthEarned)),
+            (PayCore.periodEarnedLabel(settings), money(snap.periodEarned)),
             (L10n.t(lang, "今日满勤", "Full day"), money(snap.dailyPay)),
             (L10n.t(lang, "时薪", "Hourly"), money(snap.hourly)),
             (L10n.t(lang, "今日进度", "Progress"), String(format: "%.1f%%", snap.progress * 100)),
@@ -219,8 +219,7 @@ final class WidgetView: NSView {
     override func accessibilityLabel() -> String? {
         let lang = state.settings.language
         guard let snap = state.snap else { return L10n.t(lang, "上班激励器", "Work Motivator") }
-        let what = L10n.t(lang, snap.status == .off ? "本月已赚" : "今日已赚",
-                          snap.status == .off ? "This month" : "Today")
+        let what = snap.status == .off ? PayCore.periodEarnedLabel(state.settings) : L10n.t(lang, "今日已赚", "Today")
         let money = PayCore.formatMoney(state.counterValue, state.settings, decimals: 2)
         return "\(state.chip.text), \(what) \(money), \(state.right.label)\(state.right.value)"
     }
@@ -402,7 +401,9 @@ final class WidgetView: NSView {
         let receiptTitle = L10n.t(st.settings.language, "工 资 条", "PAY SLIP")
         if let snap = st.snap {
             PixelFont.draw(receiptTitle, at: CGPoint(x: tx, y: y), color: Pal.paperInk)
-            let ym = "\(snap.year).\(String(format: "%02d", snap.month))"
+            // 设了发薪日写本期日期（10.15-11.14），没设写年月
+            let ym = st.settings.payday > 0 ? PayCore.periodRange(snap)
+                : "\(snap.year).\(String(format: "%02d", snap.month))"
             PixelFont.draw(ym, at: CGPoint(x: tr - PixelFont.width(ym), y: y), color: Pal.paperFaint)
         } else {
             PixelFont.draw(receiptTitle, at: CGPoint(x: tx, y: y), color: Pal.paperInk)
