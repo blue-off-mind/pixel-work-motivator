@@ -118,3 +118,7 @@ BIN="build/上班激励器.app/Contents/MacOS/PixelWorkMotivator"
 
 - 像素字体：[缝合像素字体 Fusion Pixel Font](https://github.com/TakWolf/fusion-pixel-font)（TakWolf，SIL OFL 1.1），许可证见 `macos/Resources/Fonts/`。
 - 版式参考了一款 Windows 上的「上班鼓励器」，像素画、动画和代码都是新写的。
+
+## 开源许可证
+
+本项目基于 [MIT License](LICENSE) 开源。随附的像素字体使用 SIL Open Font License 1.1，详见 `macos/Resources/Fonts/` 中的许可证文件。
