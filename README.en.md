@@ -1,6 +1,6 @@
 [简体中文](README.md) | English
 
-# Work Motivator · Pixel Floating Widget (macOS)
+# Work Motivator · Pixel Floating Widget (macOS / Windows)
 
 A pixel-art floating widget for your desktop. Enter your salary and working hours, and it shows how much you have earned today, rolling the digits upward in real time.
 
@@ -28,9 +28,15 @@ Three sizes are available: the small size keeps only the counter, while the larg
 
 ![Small](docs/screenshots/en/small.png) ![Large](docs/screenshots/en/large.png)
 
-## Installation
+## Installation and Downloads
 
-1. Open `build/上班激励器.dmg` and drag “上班激励器” into “Applications”.
+### Windows
+1. Download `PixelWorkMotivator-v1.0.0-windows-x64.zip` from [Releases](../../releases).
+2. Extract the archive and launch `PixelWorkMotivator.exe` (portable, standalone, self-contained .NET 8 runtime, no external dependencies required).
+3. For source code and local build instructions, see [windows/README.md](windows/README.md).
+
+### macOS
+1. Download `上班激励器.dmg` from [Releases](../../releases) (or build locally using `./macos/build.sh dmg`), open it, and drag “上班激励器” into “Applications”.
 2. The settings window opens on first launch. Enter your salary and working hours, then click “保存并开始计时” (Save and start counting).
 3. To use English, choose “English” under “显示 › 语言” (Display › Language) and save. The menus, widget, pay slip, and tips will all switch to English.
 

@@ -1,4 +1,8 @@
 .DS_Store
 build/
 *.dmg
+*.zip
 .codesign-identity
+**/bin/
+**/obj/
+windows/publish/

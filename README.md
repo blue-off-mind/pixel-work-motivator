@@ -1,6 +1,6 @@
 简体中文 | [English](README.en.md)
 
-# 上班激励器 · 像素悬浮窗（macOS）
+# 上班激励器 · 像素悬浮窗（macOS / Windows）
 
 桌面上的一个像素风小悬浮窗。填好工资和上下班时间，它就把「今天已经赚了多少」一格一格地实时滚给你看。
 
@@ -28,9 +28,15 @@
 
 ![小号](docs/screenshots/small.png) ![大号](docs/screenshots/large.png)
 
-## 安装
+## 安装与下载
 
-1. 打开 `build/上班激励器.dmg`，把「上班激励器」拖进「应用程序」。
+### Windows
+1. 在 [Releases](../../releases) 页面下载 `PixelWorkMotivator-v1.0.0-windows-x64.zip`。
+2. 解压后直接双击运行 `PixelWorkMotivator.exe`（绿色免安装，独立自包含 .NET 8 运行时，无需额外安装依赖）。
+3. 源码与本地构建说明详见 [windows/README.md](windows/README.md)。
+
+### macOS
+1. 在 [Releases](../../releases) 页面下载 `上班激励器.dmg`，把「上班激励器」拖进「应用程序」。
 2. 第一次打开会弹出设置窗口：填工资和上下班时间，点「保存并开始计时」。
 
 自己编译的版本直接能打开。如果把 dmg 发给同事，对方第一次打开会提示「无法验证开发者」，右键 App 选「打开」就行（这是 ad-hoc 签名，没有经过 Apple 公证）。

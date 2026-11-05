@@ -1,0 +1,530 @@
+<Window x:Class="PixelWorkMotivator.UI.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="上班激励器 · 设置"
+        Width="540" Height="800"
+        WindowStartupLocation="CenterScreen"
+        Background="#221F2E" Foreground="#F1ECF7"
+        ResizeMode="CanMinimize"
+        FontFamily="Segoe UI, Microsoft YaHei">
+
+    <Window.Resources>
+        <!-- Colors -->
+        <SolidColorBrush x:Key="BgDark" Color="#181524"/>
+        <SolidColorBrush x:Key="PanelDark" Color="#2A2639"/>
+        <SolidColorBrush x:Key="BorderDark" Color="#4B3C5C"/>
+        <SolidColorBrush x:Key="TextLight" Color="#F1ECF7"/>
+        <SolidColorBrush x:Key="TextMuted" Color="#A39CBA"/>
+        <SolidColorBrush x:Key="GoldAccent" Color="#FFC83D"/>
+        <SolidColorBrush x:Key="HighlightDark" Color="#3D3756"/>
+
+        <Style TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#F1ECF7"/>
+            <Setter Property="FontSize" Value="13"/>
+        </Style>
+
+        <Style TargetType="TextBox">
+            <Setter Property="Background" Value="#181524"/>
+            <Setter Property="Foreground" Value="#F1ECF7"/>
+            <Setter Property="CaretBrush" Value="#FFC83D"/>
+            <Setter Property="BorderBrush" Value="#4B3C5C"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="BorderBrush" Value="#6F6889"/>
+                </Trigger>
+                <Trigger Property="IsFocused" Value="True">
+                    <Setter Property="BorderBrush" Value="#FFC83D"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Dark ComboBoxItem Style -->
+        <Style TargetType="ComboBoxItem">
+            <Setter Property="Background" Value="#2A2639"/>
+            <Setter Property="Foreground" Value="#F1ECF7"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="8,6"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBoxItem">
+                        <Border x:Name="ItemBorder"
+                                Background="{TemplateBinding Background}"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter VerticalAlignment="Center"
+                                              TextBlock.Foreground="{TemplateBinding Foreground}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsHighlighted" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#3D3756"/>
+                                <Setter Property="Foreground" Value="#FFC83D"/>
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="ItemBorder" Property="Background" Value="#4B3C5C"/>
+                                <Setter Property="Foreground" Value="#FFFFFF"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Foreground" Value="#6F6889"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dark ComboBox Style -->
+        <Style TargetType="ComboBox">
+            <Setter Property="Background" Value="#181524"/>
+            <Setter Property="Foreground" Value="#F1ECF7"/>
+            <Setter Property="BorderBrush" Value="#4B3C5C"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="6,4"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ComboBox">
+                        <Grid>
+                            <Border x:Name="MainBorder"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="2">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="20"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <ContentPresenter Margin="6,3"
+                                                      Content="{TemplateBinding SelectionBoxItem}"
+                                                      ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                      VerticalAlignment="Center"
+                                                      HorizontalAlignment="Left"
+                                                      IsHitTestVisible="False"
+                                                      TextBlock.Foreground="{TemplateBinding Foreground}"/>
+
+                                    <ToggleButton x:Name="DropDownToggle"
+                                                  Grid.ColumnSpan="2"
+                                                  Background="Transparent"
+                                                  BorderThickness="0"
+                                                  Focusable="False"
+                                                  IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                        <ToggleButton.Template>
+                                            <ControlTemplate TargetType="ToggleButton">
+                                                <Grid Background="Transparent">
+                                                    <Path x:Name="Arrow"
+                                                          HorizontalAlignment="Right"
+                                                          VerticalAlignment="Center"
+                                                          Margin="0,0,6,0"
+                                                          Data="M 0 0 L 4 4 L 8 0 Z"
+                                                          Fill="#A39CBA"/>
+                                                </Grid>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="Arrow" Property="Fill" Value="#FFC83D"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </ToggleButton.Template>
+                                    </ToggleButton>
+                                </Grid>
+                            </Border>
+
+                            <Popup x:Name="PART_Popup"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   Placement="Bottom"
+                                   AllowsTransparency="True"
+                                   Focusable="False"
+                                   PopupAnimation="Slide">
+                                <Border Background="#2A2639"
+                                        BorderBrush="#4B3C5C"
+                                        BorderThickness="1"
+                                        CornerRadius="2"
+                                        MinWidth="{Binding ActualWidth, ElementName=MainBorder}"
+                                        MaxHeight="260">
+                                    <ScrollViewer SnapsToDevicePixels="True">
+                                        <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="MainBorder" Property="BorderBrush" Value="#FFC83D"/>
+                            </Trigger>
+                            <Trigger Property="IsDropDownOpen" Value="True">
+                                <Setter TargetName="MainBorder" Property="BorderBrush" Value="#FFC83D"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="MainBorder" Property="Background" Value="#1C1927"/>
+                                <Setter TargetName="MainBorder" Property="BorderBrush" Value="#2E2438"/>
+                                <Setter Property="Foreground" Value="#6F6889"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dark CheckBox Style -->
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="#F1ECF7"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Grid Background="Transparent">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="20"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="Box"
+                                    Width="16" Height="16"
+                                    Background="#181524"
+                                    BorderBrush="#4B3C5C"
+                                    BorderThickness="1"
+                                    CornerRadius="2"
+                                    HorizontalAlignment="Center"
+                                    VerticalAlignment="Center">
+                                <Path x:Name="CheckMark"
+                                      Data="M 3 8 L 6 11 L 13 4"
+                                      Stroke="#FFC83D"
+                                      StrokeThickness="2"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      Visibility="Collapsed"/>
+                            </Border>
+                            <ContentPresenter Grid.Column="1"
+                                              Margin="6,0,0,0"
+                                              VerticalAlignment="Center"
+                                              RecognizesAccessKey="True"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="CheckMark" Property="Visibility" Value="Visible"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Box" Property="BorderBrush" Value="#FFC83D"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Box" Property="Background" Value="#1C1927"/>
+                                <Setter Property="Foreground" Value="#6F6889"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dark Button Style -->
+        <Style TargetType="Button">
+            <Setter Property="Background" Value="#3D3756"/>
+            <Setter Property="Foreground" Value="#F1ECF7"/>
+            <Setter Property="BorderBrush" Value="#4B3C5C"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="14,6"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="BtnBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="3"
+                                Padding="{TemplateBinding Padding}"
+                                SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="BtnBorder" Property="BorderBrush" Value="#FFC83D"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="BtnBorder" Property="Background" Value="#2A2639"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dark Slider Style -->
+        <Style TargetType="Slider">
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+            <Setter Property="OverridesDefaultStyle" Value="True"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid VerticalAlignment="Center">
+                            <Border Height="6" Background="#181524" BorderBrush="#4B3C5C" BorderThickness="1" CornerRadius="3"/>
+                            <Track x:Name="PART_Track">
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border x:Name="ThumbBorder" Width="12" Height="16" Background="#FFC83D" BorderBrush="#E08A1E" BorderThickness="1" CornerRadius="2" Cursor="Hand"/>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="ThumbBorder" Property="Background" Value="#FFE27A"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsDragging" Value="True">
+                                                        <Setter TargetName="ThumbBorder" Property="Background" Value="#FFFFFF"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Dark ScrollBar Style -->
+        <Style TargetType="ScrollBar">
+            <Setter Property="Background" Value="#181524"/>
+            <Setter Property="Foreground" Value="#4B3C5C"/>
+            <Setter Property="Width" Value="8"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Background="#181524" SnapsToDevicePixels="True">
+                            <Track x:Name="PART_Track" IsDirectionReversed="True">
+                                <Track.Thumb>
+                                    <Thumb>
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border x:Name="ThumbBorder" Background="#4B3C5C" CornerRadius="4" Margin="1,0"/>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                        <Setter TargetName="ThumbBorder" Property="Background" Value="#FFC83D"/>
+                                                    </Trigger>
+                                                    <Trigger Property="IsDragging" Value="True">
+                                                        <Setter TargetName="ThumbBorder" Property="Background" Value="#FFC83D"/>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Intro -->
+        <TextBlock x:Name="TxtIntro" Grid.Row="0" Margin="0,0,0,12" TextWrapping="Wrap" Foreground="#A39CBA" FontSize="12"
+                   Text="先填工资和上下班时间。保存后，屏幕右上角的像素悬浮窗就开始实时跳钱；之后右键悬浮窗、或点系统托盘金币，都能回来改。"/>
+
+        <!-- Form ScrollViewer -->
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,0,0,12">
+            <StackPanel Margin="0,0,10,0">
+                <!-- Salary Header -->
+                <TextBlock x:Name="HdrSalary" Text="工资" FontWeight="Bold" FontSize="14" Foreground="#FFC83D" Margin="0,0,0,10"/>
+
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="LblPayType" Text="计薪方式" VerticalAlignment="Center" Foreground="#A39CBA"/>
+                    <ComboBox x:Name="CmbSalaryType" Grid.Column="1" Width="140" HorizontalAlignment="Left"/>
+                </Grid>
+
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="LblAmount" Text="金额" VerticalAlignment="Center" Foreground="#A39CBA"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <TextBox x:Name="TxtSalary" Width="120"/>
+                        <TextBlock x:Name="TxtSalaryUnit" Text="元 / 月" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="#A39CBA"/>
+                    </StackPanel>
+                </Grid>
+
+                <Grid Margin="0,0,0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="LblDayMode" Text="日薪折算" VerticalAlignment="Center" Foreground="#A39CBA"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <ComboBox x:Name="CmbDayMode" Width="130"/>
+                        <TextBox x:Name="TxtCustomDays" Width="50" Margin="8,0,0,0"/>
+                        <TextBlock x:Name="TxtCustomDaysUnit" Text="天" Margin="6,0,0,0" VerticalAlignment="Center" Foreground="#A39CBA"/>
+                    </StackPanel>
+                </Grid>
+
+                <Grid Margin="0,0,0,14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="TxtDailyHint" Grid.Column="1" TextWrapping="Wrap" Foreground="#7BD66A" FontSize="12" Margin="0,2,0,0"/>
+                </Grid>
+
+                <!-- Working Hours Header -->
+                <TextBlock x:Name="HdrHours" Text="上下班" FontWeight="Bold" FontSize="14" Foreground="#FFC83D" Margin="0,8,0,10"/>
+
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="LblStartTime" Text="上班时间" VerticalAlignment="Center" Foreground="#A39CBA"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <TextBox x:Name="TxtStart" Width="65" Text="09:00" VerticalContentAlignment="Center"/>
+                        <TextBlock x:Name="LblEndTime" Text="下班时间" Margin="16,0,8,0" VerticalAlignment="Center" Foreground="#A39CBA"/>
+                        <TextBox x:Name="TxtEnd" Width="65" Text="18:00" VerticalContentAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="LblLunch" Text="午休" VerticalAlignment="Center" Foreground="#A39CBA"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <CheckBox x:Name="ChkLunch" Content="午休不计薪" VerticalAlignment="Center" IsChecked="True"/>
+                        <TextBox x:Name="TxtLunchStart" Width="65" Margin="12,0,0,0" Text="12:00" VerticalContentAlignment="Center"/>
+                        <TextBlock x:Name="TxtLunchTo" Text="至" Margin="8,0,8,0" VerticalAlignment="Center" Foreground="#A39CBA"/>
+                        <TextBox x:Name="TxtLunchEnd" Width="65" Text="13:00" VerticalContentAlignment="Center"/>
+                    </StackPanel>
+                </Grid>
+
+                <Grid Margin="0,0,0,14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="LblWorkdays" Text="工作日" VerticalAlignment="Center" Foreground="#A39CBA"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" x:Name="PnlWorkdays">
+                        <!-- Monday to Sunday Checkboxes or ToggleButtons -->
+                        <CheckBox x:Name="ChkWk1" Content="一" Margin="0,0,10,0"/>
+                        <CheckBox x:Name="ChkWk2" Content="二" Margin="0,0,10,0"/>
+                        <CheckBox x:Name="ChkWk3" Content="三" Margin="0,0,10,0"/>
+                        <CheckBox x:Name="ChkWk4" Content="四" Margin="0,0,10,0"/>
+                        <CheckBox x:Name="ChkWk5" Content="五" Margin="0,0,10,0"/>
+                        <CheckBox x:Name="ChkWk6" Content="六" Margin="0,0,10,0"/>
+                        <CheckBox x:Name="ChkWk0" Content="日" Margin="0,0,10,0"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- Display Header -->
+                <TextBlock x:Name="HdrDisplay" Text="显示" FontWeight="Bold" FontSize="14" Foreground="#FFC83D" Margin="0,8,0,10"/>
+
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="LblLang" Text="语言" VerticalAlignment="Center" Foreground="#A39CBA"/>
+                    <ComboBox x:Name="CmbLanguage" Grid.Column="1" Width="140" HorizontalAlignment="Left"/>
+                </Grid>
+
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="LblPayday" Text="发薪日" VerticalAlignment="Center" Foreground="#A39CBA"/>
+                    <ComboBox x:Name="CmbPayday" Grid.Column="1" Width="140" HorizontalAlignment="Left"/>
+                </Grid>
+
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="LblCurrency" Text="货币" VerticalAlignment="Center" Foreground="#A39CBA"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <ComboBox x:Name="CmbCurrency" Width="70"/>
+                        <TextBlock x:Name="LblDecimals" Text="小数位" Margin="16,0,8,0" VerticalAlignment="Center" Foreground="#A39CBA"/>
+                        <ComboBox x:Name="CmbDecimals" Width="80"/>
+                    </StackPanel>
+                </Grid>
+
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="LblMenuBar" Text="任务栏/托盘" VerticalAlignment="Center" Foreground="#A39CBA"/>
+                    <ComboBox x:Name="CmbMenuBar" Grid.Column="1" Width="180" HorizontalAlignment="Left"/>
+                </Grid>
+
+                <Grid Margin="0,0,0,8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock x:Name="LblSize" Text="悬浮窗大小" VerticalAlignment="Center" Foreground="#A39CBA"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <ComboBox x:Name="CmbSize" Width="80"/>
+                        <TextBlock x:Name="LblOpacity" Text="不透明度" Margin="16,0,8,0" VerticalAlignment="Center" Foreground="#A39CBA"/>
+                        <Slider x:Name="SldOpacity" Width="100" Minimum="0.4" Maximum="1.0" Value="1.0" SmallChange="0.05" LargeChange="0.1" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="TxtOpacityVal" Text="100%" Margin="8,0,0,0" VerticalAlignment="Center" Foreground="#A39CBA"/>
+                    </StackPanel>
+                </Grid>
+
+                <Grid Margin="0,0,0,6">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <CheckBox x:Name="ChkSound" Grid.Column="1" Content="进账时播放金币音"/>
+                </Grid>
+
+                <Grid Margin="0,0,0,14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="100"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <CheckBox x:Name="ChkAutoStart" Grid.Column="1" Content="开机自动启动"/>
+                </Grid>
+
+                <!-- Wishlist Header -->
+                <TextBlock x:Name="HdrWishlist" Text="心愿单" FontWeight="Bold" FontSize="14" Foreground="#FFC83D" Margin="0,8,0,6"/>
+                <TextBlock x:Name="TxtWishlistHint" Text="每行一项：名称 价格，例如「一杯奶茶 15」。悬浮窗会算出还要工作多久才买得起。"
+                           TextWrapping="Wrap" Foreground="#A39CBA" FontSize="12" Margin="0,0,0,8"/>
+                <TextBox x:Name="TxtWishlist" Height="100" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10"/>
+            </StackPanel>
+        </ScrollViewer>
+
+        <!-- Bottom Action Bar -->
+        <Grid Grid.Row="2" Margin="0,12,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+
+            <TextBlock x:Name="TxtError" Text="" Foreground="#E2463F" TextWrapping="Wrap" VerticalAlignment="Center"/>
+            <Button x:Name="BtnCancel" Grid.Column="1" Content="取消" Margin="0,0,10,0" Width="80"/>
+            <Button x:Name="BtnSave" Grid.Column="2" Content="保存" MinWidth="120" Padding="14,6" Background="#E08A1E" FontWeight="Bold"/>
+        </Grid>
+    </Grid>
+</Window>
